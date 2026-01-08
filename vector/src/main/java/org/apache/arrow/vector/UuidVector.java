@@ -171,7 +171,9 @@ public class UuidVector extends ExtensionTypeVector<FixedSizeBinaryVector>
       holder.isSet = 0;
     } else {
       holder.isSet = 1;
-      holder.buffer = getBufferSlicePostNullCheck(index);
+      final ByteBuffer bb = ByteBuffer.wrap(getUnderlyingVector().getObject(index));
+      holder.mostSigBits = bb.getLong();
+      holder.leastSigBits = bb.getLong();
     }
   }
 
@@ -183,7 +185,9 @@ public class UuidVector extends ExtensionTypeVector<FixedSizeBinaryVector>
    */
   public void get(int index, UuidHolder holder) {
     holder.isSet = 1;
-    holder.buffer = getBufferSlicePostNullCheck(index);
+    final ByteBuffer bb = ByteBuffer.wrap(getUnderlyingVector().getObject(index));
+    holder.mostSigBits = bb.getLong();
+    holder.leastSigBits = bb.getLong();
   }
 
   /**
@@ -207,7 +211,8 @@ public class UuidVector extends ExtensionTypeVector<FixedSizeBinaryVector>
    * @param holder the holder containing the UUID data
    */
   public void set(int index, UuidHolder holder) {
-    this.set(index, holder.isSet, holder.buffer);
+    UUID uuid = new UUID(holder.mostSigBits, holder.leastSigBits);
+    set(index, uuid);
   }
 
   /**
@@ -217,7 +222,12 @@ public class UuidVector extends ExtensionTypeVector<FixedSizeBinaryVector>
    * @param holder the holder containing the UUID data
    */
   public void set(int index, NullableUuidHolder holder) {
-    this.set(index, holder.isSet, holder.buffer);
+    if (holder.isSet == 0) {
+      getUnderlyingVector().setNull(index);
+    } else {
+      UUID uuid = new UUID(holder.mostSigBits, holder.leastSigBits);
+      set(index, uuid);
+    }
   }
 
   /**
@@ -287,7 +297,10 @@ public class UuidVector extends ExtensionTypeVector<FixedSizeBinaryVector>
    */
   public void setSafe(int index, NullableUuidHolder holder) {
     if (holder != null) {
-      getUnderlyingVector().setSafe(index, holder.isSet, holder.buffer);
+      while (index >= getValueCapacity()) {
+        getUnderlyingVector().reAlloc();
+      }
+      set(index, holder);
     } else {
       getUnderlyingVector().setNull(index);
     }
@@ -301,7 +314,10 @@ public class UuidVector extends ExtensionTypeVector<FixedSizeBinaryVector>
    */
   public void setSafe(int index, UuidHolder holder) {
     if (holder != null) {
-      getUnderlyingVector().setSafe(index, holder.isSet, holder.buffer);
+      while (index >= getValueCapacity()) {
+        getUnderlyingVector().reAlloc();
+      }
+      set(index, holder);
     } else {
       getUnderlyingVector().setNull(index);
     }
